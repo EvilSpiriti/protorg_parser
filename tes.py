@@ -94,7 +94,8 @@ def save_item(soup, url):
                 soup_full_description = soup_detail_page.find('div', class_='product-description').find('div', class_='tab-block-inner')
             soup_anons_img_url = soup_detail_page.find('div', class_='gallery-main-wrapper').find('a').get('href')
             #soup_gallary_list = list_gallary_img
-            soup_articul = soup_detail_page.find('span', class_='js-product-sku').text
+            if soup_detail_page.find('span', class_='js-product-sku'):
+                soup_articul = soup_detail_page.find('span', class_='js-product-sku').text
 
             if soup_detail_page.find('table'):
                 soup_charakter = soup_detail_page.find('table')
@@ -147,7 +148,7 @@ headers = {#Заголовки для отправки данных на сай�
     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
     "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.106 Safari/537.36"
 }
-url_subsection = "https://www.protorg-msk.ru/collection/din-933-48"#URL детальной страницы подраздела
+url_subsection = "https://www.protorg-msk.ru/collection/art-9110"#URL детальной страницы подраздела
 
 req_subsection_done = requests.get(url_subsection, headers=headers)#Запрос на получение страницы подраздела 2 уровня
 soup_subsection_done = BeautifulSoup(req_subsection_done.text, "lxml")#Получить страницу подраздела 2 уровня в формате soup объекта  need lxml
