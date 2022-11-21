@@ -3,34 +3,32 @@ from bs4 import BeautifulSoup
 import csv
 import datetime
 from selenium import webdriver
+import time
+import json
 
+#глобальные переменные для итоговой работы и записи в файл
 browser = webdriver.Chrome()
-list_gallary_img = []
-#Создание файла для cvs
-cur_time = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M")#Получить текущую дату
-with open(f"protorg_{cur_time}.csv", "w") as file:#Открыть файл для записи
-    writer = csv.writer(file)#Возвращает объект записи, ответственный за преобразование пользовательских данных в строки с разделителями в данном файлоподобном объект
+#list_gallary_img = []
+catalog = []#Готовый каталог
+#section = []#Раздел каталога                            //1 lvl
+#subsection = []#Подраздел каталога                      //2 lvl
+#subsection_2 = []#Подраздел каталога 2 уровня           //3 lvl
 
-    writer.writerow(#Создать следующие столбцы
-        (
-            "Название товара или услуги",
-            "Название товара в URL",
-            "URL",
-            "Краткое описание",
-            "Полное описание",
-            "Картинка анонса",
-            "Галлерея",
-            "Артикуль",
-            "Характеристики",
-            "Старая цена",
-            "Процент скидки",
-            "Цена продажи",
-        )
-    )
+def log():
+    pass
+
+def save_img_sections(url, name):
+    #Получить ответ с картинкой от сервера
+    req = requests.get(url, headers=headers)#запрос на сервер
+    respons = req.content#Получить контент ответа
+
+    #Сохранить ответ от сервера(картику) в папку
+    with open(f"media/sections/{name.replace('/', '_')}.jpg", "wb") as file:
+        file.write(respons)
 
 def save_galary(soup_gal, name):
     list_url_img = soup_gal.find_all('img', class_='slide-image')
-
+    list_gallary_img = []
     iter = 0
     for item_url_img in list_url_img:
         #Получить ответ с картинкой от сервера
@@ -42,12 +40,14 @@ def save_galary(soup_gal, name):
             file.write(respons)
             list_gallary_img.append(f"media/items/{name.replace('/', '_')}_{iter}.jpg")
         iter += 1
+    return list_gallary_img
 
 
 def save_item(soup, url):
 
     if soup.find_all('li', class_='pagination-item'):
         last_pagen = int(soup.find_all('li', class_='pagination-item')[-2].find('a').text.strip())
+        #last_pagen = 2
     else:
         last_pagen = 1
 
@@ -63,13 +63,17 @@ def save_item(soup, url):
             detail_url = item.find('a', class_='product-card-photo').get('href')
 
             browser.get(url=f"{url}{detail_url}")
+            time.sleep(1)
             #req_detail_page = requests.get(url=f"{url}{detail_url}")
             soup_detail_page = BeautifulSoup(browser.page_source, "lxml")
 
             #
             soup_galary_container = soup_detail_page.find('div', class_='swiper-wrapper')
-            soup_name_item = soup_detail_page.find('h1', class_='page-headding').text.strip()
-            save_galary(soup_galary_container,soup_name_item)
+            if  soup_detail_page.find('h1', class_='page-headding'):
+                soup_name_item = soup_detail_page.find('h1', class_='page-headding').text.strip()
+            else:
+                soup_name_item = 'Не удалось найти название'
+            
             #print(list_gallary_img)
 
             #Объявление переменных
@@ -89,11 +93,13 @@ def save_item(soup, url):
             soup_name_item = soup_name_item
             soup_name_url = detail_url.split('/')[-1]
             soup_URL = f"{url}{detail_url}"
-            soup_smal_description = soup_detail_page.find('div', class_='product-introtext').text
+            if soup_detail_page.find('div', class_='product-introtext'):
+                soup_smal_description = soup_detail_page.find('div', class_='product-introtext').text
             if soup_detail_page.find('div', class_='product-description'):
                 soup_full_description = soup_detail_page.find('div', class_='product-description').find('div', class_='tab-block-inner')
-            soup_anons_img_url = soup_detail_page.find('div', class_='gallery-main-wrapper').find('a').get('href')
-            #soup_gallary_list = list_gallary_img
+            if soup_detail_page.find('div', class_='gallery-main-wrapper').find('a'):
+                soup_anons_img_url = soup_detail_page.find('div', class_='gallery-main-wrapper').find('a').get('href')
+            soup_gallary_list = save_galary(soup_galary_container,soup_name_item)
             if soup_detail_page.find('span', class_='js-product-sku'):
                 soup_articul = soup_detail_page.find('span', class_='js-product-sku').text
 
@@ -121,37 +127,162 @@ def save_item(soup, url):
                         soup_smal_description,
                         soup_full_description,
                         soup_anons_img_url,
-                        list_gallary_img,
+                        soup_gallary_list,
                         soup_articul,
                         soup_charakter,
                         soup_old_price,
                         soup_discount,
-                        soup_price
+                        soup_price,
+                        name_section,
+                        name_subsection,
+                        name_subsection_2
                     )
                 )
-                
-            
-            
+            soup_gallary_list = []
+            #log(url_section, url_subsection, )
 
+#Создание файла для cvs
+cur_time = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M")#Получить текущую дату
+with open(f"protorg_{cur_time}.csv", "w") as file:#Открыть файл для записи
+    writer = csv.writer(file)#Возвращает объект записи, ответственный за преобразование пользовательских данных в строки с разделителями в данном файлоподобном объект
 
-        print(i)
+    writer.writerow(#Создать следующие столбцы
+        (
+            "Название товара или услуги",
+            "Название товара в URL",
+            "URL",
+            "Краткое описание",
+            "Полное описание",
+            "Картинка анонса",
+            "Галлерея",
+            "Артикуль",
+            "Характеристики",
+            "Старая цена",
+            "Процент скидки",
+            "Цена продажи",
+            "Раздел 1 уровня",
+            "Раздел 2 уровня",
+            "Раздел 3 уровня",
+        )
+    )
 
-
-
-
-
-
-
-url = 'https://www.protorg-msk.ru'#URL главной страницы
 
 headers = {#Заголовки для отправки данных на сайт
     "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
     "user-agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.106 Safari/537.36"
 }
-url_subsection = "https://www.protorg-msk.ru/collection/art-9110"#URL детальной страницы подраздела
+url = 'https://www.protorg-msk.ru'#URL главной страницы
 
-req_subsection_done = requests.get(url_subsection, headers=headers)#Запрос на получение страницы подраздела 2 уровня
-soup_subsection_done = BeautifulSoup(req_subsection_done.text, "lxml")#Получить страницу подраздела 2 уровня в формате soup объекта  need lxml
+browser.get(url)#URL главной страницы
+soup_home = BeautifulSoup(browser.page_source, "lxml")#Получить HTML главной страницы  need lxml
 
-save_item(soup_subsection_done, url_subsection)
+#Работа на формирование главных разделов
+home_catigories_container = soup_home.find('div', class_='special-categories')#Получить контейнер в котором храняться раделы первого уровня
+list_categories_home = home_catigories_container.find_all('div', class_='special-category')#Список контейнеров 
 
+#
+try:
+    with open("pars_stat.json") as file:
+        d = json.load(file)
+        file.close()
+        is_file_exist1 = True
+        is_file_exist2 = True
+        is_file_exist3 = True
+except Exception:
+    is_file_exist1 = False
+    is_file_exist2 = False
+    is_file_exist3 = False
+
+#Пройтись по разделам каталога верхнего уровня
+for section in list_categories_home:
+    name_section = section.find('div', class_='category-caption').text.strip()#Название раздела
+    url_pictures_section = section.find('picture', class_='category-image').find('img').get('src')#URL картинки раздела
+    url_section = f"{url}{section.find('a', class_='category-inner').get('href')}"#URL детальной страницы раздела
+
+    if is_file_exist1 == True:
+        if url_section != d["1lvl"]:
+            continue
+        else:
+            is_file_exist1 = False
+
+    status_pars = {
+        "1lvl": url_section,
+    }
+    with open("pars_stat.json", "w") as file:
+        json.dump(status_pars, file, indent=4, ensure_ascii=False)
+
+    save_img_sections(url_pictures_section, name_section)#функция сохранения картики разделов
+
+    #Зайти внутрь разделов верхнего уровня
+    browser.get(url_section)#Запрос на получение страницы раздела верхнего уровня
+    soup_subsection = BeautifulSoup(browser.page_source, "lxml")#Получить страницу раздела врехнего уровня в формате soup объекта  need lxml
+
+    subsections_container = soup_subsection.find('div', class_='categories-subcollections')#Получить контейнер с подкатегориями
+    list_subsections = subsections_container.find_all('div', class_='category-subcollections')#Получить список подкатегорий
+
+    #Пройтись по списку подкатегорий
+    for subsection in list_subsections:
+        name_subsection = subsection.find('div', class_='category-caption').text.strip()#Название подраздела
+        url_pictures_subsection = subsection.find('picture', class_='category-image').find('img').get('src')#URL картинки подраздела
+        url_subsection = f"{url}{subsection.find('a', class_='category-inner').get('href')}"#URL детальной страницы подраздела
+
+        if is_file_exist2 == True:
+            if url_subsection != d["2lvl"]:
+                continue
+            else:
+                is_file_exist2 = False
+    
+        status_pars = {
+            "1lvl": url_section,
+            "2lvl": url_subsection,
+        }
+        with open("pars_stat.json", "w") as file:
+            json.dump(status_pars, file, indent=4, ensure_ascii=False)
+
+        save_img_sections(url_pictures_subsection, name_subsection)#функция сохранения картики разделов
+
+        #Зайти внутрь подразделов
+        browser.get(url_subsection)#Запрос на получение страницы подраздела
+        soup_subsection_2 = BeautifulSoup(browser.page_source, "lxml")#Получить страницу подраздела в формате soup объекта  need lxml
+
+        subsections_2_container = soup_subsection_2.find('div', class_='categories-subcollections-cus')#Получить контейнер с подкатегориями 2 уровня
+        if subsections_2_container == None:
+            name_subsection_2 = ''
+            save_item(soup_subsection_2, url_subsection)
+            status_pars = {
+                "1lvl": url_section,
+                "2lvl": url_subsection,
+            }
+            with open("pars_stat.json", "w") as file:
+                json.dump(status_pars, file, indent=4, ensure_ascii=False)
+        else:
+            list_subsections_2 = subsections_2_container.find_all('div', class_='category-subcollections')#Получить список подкатегорий
+
+            #Пройтись по списку подкатегорий 2 уровня
+            for subsections_2 in list_subsections_2:
+                name_subsection_2 = subsections_2.find('div', class_='category-caption').text.strip()#Название подраздела 2 уровня
+                url_pictures_subsection_2 = subsections_2.find('picture', class_='category-image').find('img').get('src')#URL картинки подраздела 2 уровня
+                url_subsection_2 = f"{url}{subsections_2.find('a', class_='category-inner').get('href')}"#URL детальной страницы подраздела 2 уровня
+
+                if is_file_exist3 == True:
+                    if url_subsection_2 != d["3lvl"]:
+                        continue
+                    else:
+                        is_file_exist3 = False
+
+                status_pars = {
+                    "1lvl": url_section,
+                    "2lvl": url_subsection,
+                    "3lvl": url_subsection_2,
+                }
+                with open("pars_stat.json", "w") as file:
+                    json.dump(status_pars, file, indent=4, ensure_ascii=False)
+
+                save_img_sections(url_pictures_subsection, name_subsection_2)#функция сохранения картики разделов
+
+                #Зайти внутрь подразделов 2 уровня
+                browser.get(url_subsection_2)#Запрос на получение детальной страницы
+                soup_subsection_done = BeautifulSoup(browser.page_source, "lxml")#Получить детальную страницу в формате soup объекта  need lxml
+
+                save_item(soup_subsection_done, url_subsection_2)
+                url_subsection_2 = ''

@@ -4,6 +4,7 @@ import csv
 import datetime
 from selenium import webdriver
 import time
+import json
 
 #глобальные переменные для итоговой работы и записи в файл
 browser = webdriver.Chrome()
@@ -179,10 +180,15 @@ home_catigories_container = soup_home.find('div', class_='special-categories')#�
 list_categories_home = home_catigories_container.find_all('div', class_='special-category')#Список контейнеров 
 
 #Пройтись по разделам каталога верхнего уровня
-for section in list_categories_home[0:1]:
+for section in list_categories_home:
     name_section = section.find('div', class_='category-caption').text.strip()#Название раздела
     url_pictures_section = section.find('picture', class_='category-image').find('img').get('src')#URL картинки раздела
     url_section = f"{url}{section.find('a', class_='category-inner').get('href')}"#URL детальной страницы раздела
+    status_pars = {
+        "1lvl": url_section,
+    }
+    with open("pars_stat.json", "w") as file:
+        json.dump(status_pars, file, indent=4, ensure_ascii=False)
 
     save_img_sections(url_pictures_section, name_section)#функция сохранения картики разделов
 
@@ -198,6 +204,12 @@ for section in list_categories_home[0:1]:
         name_subsection = subsection.find('div', class_='category-caption').text.strip()#Название подраздела
         url_pictures_subsection = subsection.find('picture', class_='category-image').find('img').get('src')#URL картинки подраздела
         url_subsection = f"{url}{subsection.find('a', class_='category-inner').get('href')}"#URL детальной страницы подраздела
+        status_pars = {
+            "1lvl": url_section,
+            "2lvl": url_subsection,
+        }
+        with open("pars_stat.json", "w") as file:
+            json.dump(status_pars, file, indent=4, ensure_ascii=False)
 
         save_img_sections(url_pictures_subsection, name_subsection)#функция сохранения картики разделов
 
@@ -209,7 +221,12 @@ for section in list_categories_home[0:1]:
         if subsections_2_container == None:
             name_subsection_2 = ''
             save_item(soup_subsection_2, url_subsection)
-            print('Заглушка')
+            status_pars = {
+                "1lvl": url_section,
+                "2lvl": url_subsection,
+            }
+            with open("pars_stat.json", "w") as file:
+                json.dump(status_pars, file, indent=4, ensure_ascii=False)
         else:
             list_subsections_2 = subsections_2_container.find_all('div', class_='category-subcollections')#Получить список подкатегорий
 
@@ -218,6 +235,13 @@ for section in list_categories_home[0:1]:
                 name_subsection_2 = subsections_2.find('div', class_='category-caption').text.strip()#Название подраздела 2 уровня
                 url_pictures_subsection_2 = subsections_2.find('picture', class_='category-image').find('img').get('src')#URL картинки подраздела 2 уровня
                 url_subsection_2 = f"{url}{subsections_2.find('a', class_='category-inner').get('href')}"#URL детальной страницы подраздела 2 уровня
+                status_pars = {
+                    "1lvl": url_section,
+                    "2lvl": url_subsection,
+                    "3lvl": url_subsection_2,
+                }
+                with open("pars_stat.json", "w") as file:
+                    json.dump(status_pars, file, indent=4, ensure_ascii=False)
 
                 save_img_sections(url_pictures_subsection, name_subsection_2)#функция сохранения картики разделов
 
@@ -226,6 +250,7 @@ for section in list_categories_home[0:1]:
                 soup_subsection_done = BeautifulSoup(browser.page_source, "lxml")#Получить детальную страницу в формате soup объекта  need lxml
 
                 save_item(soup_subsection_done, url_subsection_2)
+                url_subsection_2 = ''
 
 
 
