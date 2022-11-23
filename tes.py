@@ -43,24 +43,45 @@ def save_galary(soup_gal, name):
     return list_gallary_img
 
 
-def save_item(soup, url):
+def save_item(soup, url, is_file_exist):
 
     if soup.find_all('li', class_='pagination-item'):
         last_pagen = int(soup.find_all('li', class_='pagination-item')[-2].find('a').text.strip())
         #last_pagen = 2
     else:
         last_pagen = 1
+    
+    if is_file_exist == True:
+        start_pagen = p['pagen']
+    else:
+        start_pagen = 1
 
-    for i in range(1, last_pagen + 1):
+    for i in range(start_pagen, last_pagen + 1):
     #for i in range(1, 2):
-        req_cur_page = requests.get(url=f"{url}?page={i}", headers=headers)
-        soup_cur_page = BeautifulSoup(req_cur_page.text, "lxml")
+        browser.get(url=f"{url}?page={i}")
+        soup_cur_page = BeautifulSoup(browser.page_source, "lxml")
 
         item_container = soup_cur_page.find('div', class_='products-list')
         list_item = item_container.find_all('div', class_='product-card-wrapper')
 
         for item in list_item:
             detail_url = item.find('a', class_='product-card-photo').get('href')
+            test_url_save = f"{url}{detail_url}"
+            
+
+            if is_file_exist ==True:
+                print("is_file_exist")
+                if test_url_save.strip() != f"{url}{p['detail_url'].strip()}":
+                    continue
+                else:
+                    is_file_exist = False
+
+            status_pars_detail = {
+            "pagen": i,
+            "detail_url": f"{detail_url}",
+            }
+            with open("pars_stat_detail.json", "w") as file:
+                json.dump(status_pars_detail, file, indent=4, ensure_ascii=False)
 
             browser.get(url=f"{url}{detail_url}")
             time.sleep(1)
@@ -97,7 +118,7 @@ def save_item(soup, url):
                 soup_smal_description = soup_detail_page.find('div', class_='product-introtext').text
             if soup_detail_page.find('div', class_='product-description'):
                 soup_full_description = soup_detail_page.find('div', class_='product-description').find('div', class_='tab-block-inner')
-            if soup_detail_page.find('div', class_='gallery-main-wrapper').find('a'):
+            if soup_detail_page.find('div', class_='gallery-main-wrapper'):
                 soup_anons_img_url = soup_detail_page.find('div', class_='gallery-main-wrapper').find('a').get('href')
             soup_gallary_list = save_galary(soup_galary_container,soup_name_item)
             if soup_detail_page.find('span', class_='js-product-sku'):
@@ -140,6 +161,7 @@ def save_item(soup, url):
                 )
             soup_gallary_list = []
             #log(url_section, url_subsection, )
+    return is_file_exist
 
 #Создание файла для cvs
 cur_time = datetime.datetime.now().strftime("%d_%m_%Y_%H_%M")#Получить текущую дату
@@ -192,6 +214,17 @@ except Exception:
     is_file_exist1 = False
     is_file_exist2 = False
     is_file_exist3 = False
+
+#
+try:
+    with open("pars_stat_detail.json") as file:
+        p = json.load(file)
+        file.close()
+        is_file_exist = True
+        
+except Exception:
+    is_file_exist = False
+    
 
 #Пройтись по разделам каталога верхнего уровня
 for section in list_categories_home:
@@ -248,7 +281,7 @@ for section in list_categories_home:
         subsections_2_container = soup_subsection_2.find('div', class_='categories-subcollections-cus')#Получить контейнер с подкатегориями 2 уровня
         if subsections_2_container == None:
             name_subsection_2 = ''
-            save_item(soup_subsection_2, url_subsection)
+            is_file_exist = save_item(soup_subsection_2, url_subsection, is_file_exist)
             status_pars = {
                 "1lvl": url_section,
                 "2lvl": url_subsection,
@@ -284,5 +317,5 @@ for section in list_categories_home:
                 browser.get(url_subsection_2)#Запрос на получение детальной страницы
                 soup_subsection_done = BeautifulSoup(browser.page_source, "lxml")#Получить детальную страницу в формате soup объекта  need lxml
 
-                save_item(soup_subsection_done, url_subsection_2)
+                is_file_exist = save_item(soup_subsection_done, url_subsection_2, is_file_exist)
                 url_subsection_2 = ''
