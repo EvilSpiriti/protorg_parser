@@ -1,3 +1,5 @@
 /media
 /vendor
+/env
+/csv
 /*.csv
